@@ -14,12 +14,12 @@ func main() {
     panic(err)
   }
 
-  err = migrain.Exec(db, sqliteMigrations, Up)
+  err = migrain.Exec(db, sqliteMigrations, migrain.Up)
   if err != nil {
     panic(err)
   }
 
-  err = migrain.Exec(db, sqliteMigrations, Down)
+  err = migrain.Exec(db, sqliteMigrations, migrain.Down)
   if err != nil {
     panic(err)
   }
