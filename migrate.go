@@ -2,13 +2,10 @@ package migrain
 
 import (
 	"database/sql"
+	"errors"
+	"io/ioutil"
+	"strings"
 )
-
-type Migration struct {
-	Id   string
-	Up   []string
-	Down []string
-}
 
 type MigrationDirection int
 
@@ -17,21 +14,38 @@ const (
 	Down
 )
 
-func Exec(db *sql.DB, migrations []*Migration, direction MigrationDirection) error {
-	for _, migration := range migrations {
+type Migrain struct {
+	Queries []string
+}
 
-		var migrationData []string
-		if direction == Up {
-			migrationData = migration.Up
-		} else {
-			migrationData = migration.Down
-		}
+func New() *Migrain {
+	return &Migrain{}
+}
 
-		for _, migrate := range migrationData {
-			_, err := db.Exec(migrate)
-			if err != nil {
-				return err
-			}
+func (m *Migrain) File(path string) error {
+	file, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	ls := strings.Split(string(file), "\n")
+
+	query := strings.Fields(strings.Join(ls, ""))
+
+	m.Queries = append(m.Queries, strings.Join(query, " "))
+
+	return nil
+}
+
+func (m *Migrain) Exec(db *sql.DB) error {
+	if len(m.Queries) == 0 {
+		return errors.New("no migration file found")
+	}
+
+	for _, query := range m.Queries {
+		_, err := db.Exec(query)
+		if err != nil {
+			return err
 		}
 	}
 
