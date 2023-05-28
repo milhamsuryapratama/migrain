@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"io/ioutil"
+	"log"
 	"strings"
 )
 
@@ -15,14 +16,15 @@ const (
 )
 
 type Migrain struct {
-	Queries []string
+	UpQueries   []string
+	DownQueries []string
 }
 
 func New() *Migrain {
 	return &Migrain{}
 }
 
-func (m *Migrain) File(path string) error {
+func (m *Migrain) ReadFile(path string) error {
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -30,24 +32,68 @@ func (m *Migrain) File(path string) error {
 
 	ls := strings.Split(string(file), "\n")
 
-	query := strings.Fields(strings.Join(ls, ""))
+	//var ncls []string
+	var query string
+	var upQuery, downQuery []string
+	var isUpQuery, isDownQuery bool
+	for _, l := range ls {
+		if l == "-- UP --" {
+			isUpQuery = true
+			isDownQuery = false
+			continue
+		}
 
-	m.Queries = append(m.Queries, strings.Join(query, " "))
+		if l == "-- DOWN --" {
+			isUpQuery = false
+			isDownQuery = true
+			continue
+		}
+
+		if isUpQuery || isDownQuery {
+			query += l
+			if strings.Contains(l, ";") {
+				// TODO: need to trim space
+				if isUpQuery {
+					upQuery = append(upQuery, query)
+				}
+
+				if isDownQuery {
+					downQuery = append(downQuery, query)
+				}
+
+				query = ""
+			}
+		}
+	}
+
+	m.UpQueries = append(m.UpQueries, upQuery...)
+	m.DownQueries = append(m.DownQueries, downQuery...)
 
 	return nil
 }
 
-func (m *Migrain) Exec(db *sql.DB) error {
-	if len(m.Queries) == 0 {
+func (m *Migrain) Exec(db *sql.DB, migrationDirection MigrationDirection) error {
+	if migrationDirection == Up && len(m.UpQueries) == 0 {
 		return errors.New("no migration file found")
 	}
 
-	for _, query := range m.Queries {
+	if migrationDirection == Down && len(m.DownQueries) == 0 {
+		return errors.New("no migration file found")
+	}
+
+	var queries = m.UpQueries
+	if migrationDirection == Down {
+		queries = m.DownQueries
+	}
+
+	for _, query := range queries {
 		_, err := db.Exec(query)
 		if err != nil {
 			return err
 		}
 	}
+
+	log.Println("success exec migration")
 
 	return nil
 }

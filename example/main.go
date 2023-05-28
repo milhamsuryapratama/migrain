@@ -13,14 +13,19 @@ func main() {
 		panic(err)
 	}
 
-	migrain := migrain.New()
+	migrainInstance := migrain.New()
 
-	err = migrain.File("testdata/articles.sql")
+	err = migrainInstance.ReadFile("testdata/articles.sql")
 	if err != nil {
 		panic(err)
 	}
 
-	err = migrain.Exec(db)
+	err = migrainInstance.Exec(db, migrain.Down)
+	if err != nil {
+		panic(err)
+	}
+
+	err = migrainInstance.Exec(db, migrain.Down)
 	if err != nil {
 		panic(err)
 	}
