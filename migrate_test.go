@@ -8,20 +8,25 @@ import (
 )
 
 func TestMigrate(t *testing.T) {
-	_, err := sql.Open("mysql", "root:@/migrain")
+	db, err := sql.Open("mysql", "root:@/migrain")
 	if err != nil {
 		panic(err)
 	}
 
-	migrain := New()
+	migrainInstance := New()
 
-	err = migrain.File("testdata/articles.sql")
+	err = migrainInstance.ReadFile("testdata/articles.sql")
 	if err != nil {
 		panic(err)
 	}
 
-	//err = migrain.Exec(db)
-	//if err != nil {
-	//	panic(err)
-	//}
+	err = migrainInstance.Exec(db, Up)
+	if err != nil {
+		panic(err)
+	}
+
+	err = migrainInstance.Exec(db, Down)
+	if err != nil {
+		panic(err)
+	}
 }
