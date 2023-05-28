@@ -1,29 +1,36 @@
 # example
 
 ```
-import (
-    "database/sql"
-    "github.com/milhamsuryapratama/migrain"
+package main
 
-    _ "github.com/go-sql-driver/mysql"
+import (
+	"database/sql"
+	"github.com/milhamsuryapratama/migrain"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-    db, err := sql.Open("mysql", "username:password@/dbname")
-    if err != nil {
-        panic(err)
-    }
+	db, err := sql.Open("mysql", "root:@/migrain")
+	if err != nil {
+		panic(err)
+	}
 
-    migrain := migrain.New()
+	migrainInstance := migrain.New()
 
-    err = migrain.File("testdata/articles.sql")
-    if err != nil {
-        panic(err)
-    }
+	err = migrainInstance.ReadFile("testdata/articles.sql")
+	if err != nil {
+		panic(err)
+	}
 
-    err = migrain.Exec(db)
-    if err != nil {
-        panic(err)
-    }
+	err = migrainInstance.Exec(db, migrain.Down)
+	if err != nil {
+		panic(err)
+	}
+
+	err = migrainInstance.Exec(db, migrain.Down)
+	if err != nil {
+		panic(err)
+	}
 }
 ```
