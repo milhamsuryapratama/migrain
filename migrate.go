@@ -70,8 +70,6 @@ func (m *Migrain) ReadFile(path string) error {
 	m.UpQueries = append(m.UpQueries, upQuery...)
 	m.DownQueries = append(m.DownQueries, downQuery...)
 
-	fmt.Println("m.UpQueries ", m.UpQueries)
-
 	return nil
 }
 
