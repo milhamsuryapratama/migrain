@@ -3,6 +3,7 @@ package migrain
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"strings"
@@ -69,10 +70,28 @@ func (m *Migrain) ReadFile(path string) error {
 	m.UpQueries = append(m.UpQueries, upQuery...)
 	m.DownQueries = append(m.DownQueries, downQuery...)
 
+	fmt.Println("m.UpQueries ", m.UpQueries)
+
 	return nil
 }
 
-func (m *Migrain) Exec(db *sql.DB, migrationDirection MigrationDirection) error {
+func (m *Migrain) ReadDir(dir string) error {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		err = m.ReadFile(fmt.Sprintf("%s/%s", dir, file.Name()))
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return nil
+}
+
+func (m *Migrain) Run(db *sql.DB, migrationDirection MigrationDirection) error {
 	if migrationDirection == Up && len(m.UpQueries) == 0 {
 		return errors.New("no migration file found")
 	}

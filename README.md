@@ -18,7 +18,7 @@ func main() {
 
 	migrainInstance := migrain.New()
 
-	err = migrainInstance.ReadFile("testdata/articles.sql")
+	err = migrainInstance.ReadFile("testdata/01_articles.sql")
 	if err != nil {
 		panic(err)
 	}

@@ -7,25 +7,52 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func TestMigrate(t *testing.T) {
+func connectToDB() *sql.DB {
 	db, err := sql.Open("mysql", "root:@/migrain")
 	if err != nil {
 		panic(err)
 	}
 
-	migrainInstance := New()
+	return db
+}
 
-	err = migrainInstance.ReadFile("testdata/articles.sql")
+func TestReadFileMigration(t *testing.T) {
+	db := connectToDB()
+
+	migrain := New()
+
+	err := migrain.ReadFile("testdata/01_articles.sql")
 	if err != nil {
 		panic(err)
 	}
 
-	err = migrainInstance.Exec(db, Up)
+	err = migrain.Run(db, Up)
 	if err != nil {
 		panic(err)
 	}
 
-	err = migrainInstance.Exec(db, Down)
+	err = migrain.Run(db, Down)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestReadDirMigration(t *testing.T) {
+	db := connectToDB()
+
+	migrain := New()
+
+	err := migrain.ReadDir("testdata")
+	if err != nil {
+		panic(err)
+	}
+
+	err = migrain.Run(db, Up)
+	if err != nil {
+		panic(err)
+	}
+
+	err = migrain.Run(db, Down)
 	if err != nil {
 		panic(err)
 	}
