@@ -17,8 +17,14 @@ const (
 )
 
 type Migrain struct {
-	UpQueries   []string
-	DownQueries []string
+	UpQueries   []Migration
+	DownQueries []Migration
+}
+
+type Migration struct {
+	Query    string
+	FileName string
+	Batch    int
 }
 
 func New() *Migrain {
@@ -33,9 +39,7 @@ func (m *Migrain) ReadFile(path string) error {
 
 	ls := strings.Split(string(file), "\n")
 
-	//var ncls []string
 	var query string
-	var upQuery, downQuery []string
 	var isUpQuery, isDownQuery bool
 	for _, l := range ls {
 		if l == "-- UP --" {
@@ -55,20 +59,23 @@ func (m *Migrain) ReadFile(path string) error {
 			if strings.Contains(l, ";") {
 				// TODO: need to trim space
 				if isUpQuery {
-					upQuery = append(upQuery, query)
+					m.UpQueries = append(m.UpQueries, Migration{
+						FileName: path,
+						Query:    query,
+					})
 				}
 
 				if isDownQuery {
-					downQuery = append(downQuery, query)
+					m.DownQueries = append(m.DownQueries, Migration{
+						FileName: path,
+						Query:    query,
+					})
 				}
 
 				query = ""
 			}
 		}
 	}
-
-	m.UpQueries = append(m.UpQueries, upQuery...)
-	m.DownQueries = append(m.DownQueries, downQuery...)
 
 	return nil
 }
@@ -103,8 +110,34 @@ func (m *Migrain) Run(db *sql.DB, migrationDirection MigrationDirection) error {
 		queries = m.DownQueries
 	}
 
+	// init migrations table
+	_, err := db.Exec("CREATE TABLE IF NOT EXISTS migrations(" +
+		"id INT NOT NULL AUTO_INCREMENT, " +
+		"migration VARCHAR(255) NOT NULL DEFAULT '', " +
+		"batch INT NOT NULL DEFAULT 0, " +
+		"PRIMARY KEY (id))")
+	if err != nil {
+		panic(err)
+	}
+
+	batch := 1
+
 	for _, query := range queries {
-		_, err := db.Exec(query)
+		if migrationDirection == Up {
+			_, err := db.Exec("INSERT INTO migrations(migration, batch) VALUES(?, ?)", query.FileName, batch)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		if migrationDirection == Down {
+			_, err := db.Exec(fmt.Sprintf("DELETE FROM migrations WHERE migration = '%s'", query.FileName))
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		_, err = db.Exec(query.Query)
 		if err != nil {
 			return err
 		}
