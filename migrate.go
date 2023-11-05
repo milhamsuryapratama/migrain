@@ -110,19 +110,63 @@ func (m *Migrain) Run(db *sql.DB, migrationDirection MigrationDirection) error {
 		queries = m.DownQueries
 	}
 
-	// init migrations table
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS migrations(" +
-		"id INT NOT NULL AUTO_INCREMENT, " +
-		"migration VARCHAR(255) NOT NULL DEFAULT '', " +
-		"batch INT NOT NULL DEFAULT 0, " +
-		"PRIMARY KEY (id))")
+	var tableName string
+	row := db.QueryRow("SELECT TABLE_NAME FROM information_schema.tables" +
+		" WHERE table_schema = 'migrain'" +
+		" AND table_name = 'migrations'")
+
+	err := row.Scan(&tableName)
 	if err != nil {
 		panic(err)
 	}
 
-	batch := 1
+	batch := 0
+	var migratedFile []Migration
+
+	if tableName == "" {
+		// init migrations table
+		_, err = db.Exec("CREATE TABLE IF NOT EXISTS migrations(" +
+			"id INT NOT NULL AUTO_INCREMENT, " +
+			"migration VARCHAR(255) NOT NULL DEFAULT '', " +
+			"batch INT NOT NULL DEFAULT 0, " +
+			"PRIMARY KEY (id))")
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
+		if err != nil {
+			panic(err)
+		}
+
+		defer rows.Close()
+
+		for rows.Next() {
+			var migration Migration
+			err := rows.Scan(&migration.Query, &migration.FileName, &migration.Batch)
+			if err != nil {
+				panic(err)
+			}
+
+			migratedFile = append(migratedFile, migration)
+		}
+	}
+
+	var migratedFileMap = make(map[string]bool)
+	if len(migratedFile) > 0 {
+		for _, migration := range migratedFile {
+			migratedFileMap[migration.FileName] = true
+			batch = migration.Batch
+		}
+	}
+
+	batch++
 
 	for _, query := range queries {
+		if len(migratedFileMap) > 0 && migratedFileMap[query.FileName] {
+			continue
+		}
+
 		if migrationDirection == Up {
 			_, err := db.Exec("INSERT INTO migrations(migration, batch) VALUES(?, ?)", query.FileName, batch)
 			if err != nil {
@@ -141,6 +185,8 @@ func (m *Migrain) Run(db *sql.DB, migrationDirection MigrationDirection) error {
 		if err != nil {
 			return err
 		}
+
+		log.Printf("success run %s migration", query.FileName)
 	}
 
 	log.Println("success exec migration")
