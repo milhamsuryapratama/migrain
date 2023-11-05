@@ -112,8 +112,7 @@ func (m *Migrain) Run(db *sql.DB, migrationDirection MigrationDirection) error {
 
 	var tableName string
 	row := db.QueryRow("SELECT TABLE_NAME FROM information_schema.tables" +
-		" WHERE table_schema = 'migrain'" +
-		" AND table_name = 'migrations'")
+		" WHERE table_name = 'migrations'")
 
 	err := row.Scan(&tableName)
 	if err != nil {
